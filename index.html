@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      display: flex-wrap;
+      justify-content: space-between;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    canvas {
+      border: 1px solid #000;
+      cursor: crosshair;
+      margin-right: 20px;
+    }
+
+    #frontCanvas,
+    #backCanvas,
+    #sideCanvas,
+    #side2Canvas {
+      display: none;
+    }
+
+    #drawingCanvas {
+      margin-right: 20px;
+      margin-left: 20px;
+    }
+
+    #penSizeContainer {
+      margin-bottom: 10px;
+      margin-left: 20px;
+    }
+
+    #rightContainer {
+      flex: 1;
+      padding-left: 20px;
+    }
+
+    #savedDrawingsContainer {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+  <title>3D Drawing Canvas</title>
+</head>
+<body>
+  <div id="penSizeContainer">
+    <label for="penSize">Pen Size:</label>
+    <input type="range" id="penSize" min="1" max="20" value="5" onchange="updatePenSize()">
+    <span id="penSizeDisplay">Pen Size: 5</span>
+  </div>
+
+  <div id="layerWindow" style="position: absolute; top: 184px; left: 40px; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.7); display: none;">
+    <canvas id="layerCanvas" width="800" height="500" style="position: absolute; top: 0; left: 0;"></canvas>
+    <button onclick="removeLayer()" style="position: absolute; top: 0; left: 0;">Remove Layer</button>
+
+  </div>
+
+<div>
+
+  <button onclick="switchView('front')">Front View</button>
+  <button onclick="switchView('back')">Back View</button>
+  <!-- Removed buttons for side views -->
+  <button onclick="toggleEraser()">Toggle Eraser</button>
+  <button onclick="toggleSymbol()">Toggle Symbol</button>
+  <button onclick="undo()">Undo</button>
+  <button onclick="redo()">Redo</button>
+  <button onclick="downloadDrawing()">Download Drawing</button>
+  <input type="color" id="colorPicker" value="#000000" onchange="updateDrawingColor()">
+  <select id="symbolSelect" onchange="changeSymbol()">
+    <option value="line">Line</option>
+    <option value="bracket">Bracket</option>
+    <option value="circle">Circle</option>
+    <option value="square">Square</option>
+    <!-- Add more options for other symbols -->
+  </select>
+</div>
+
+  <div id="rightContainer">
+    <div id="savedDrawingsContainer">
+      <h2>Saved Drawings</h2>
+      <ul id="savedDrawingsList"></ul>
+    </div>
+  </div>
+
+  <canvas id="frontCanvas" width="800" height="500"></canvas>
+  <canvas id="backCanvas" width="800" height="500"></canvas>
+  <canvas id="sideCanvas" width="800" height="500"></canvas>
+  <canvas id="side2Canvas" width="800" height="500"></canvas>
+
+  <canvas id="drawingCanvas" width="800" height="500"></canvas>
+
+  <script>
+    const canvasIds = ['frontCanvas', 'backCanvas', 'sideCanvas', 'side2Canvas'];
+    let currentCanvasIndex = 0;
+
+    const drawingCanvas = document.getElementById('drawingCanvas');
+    const drawingContext = drawingCanvas.getContext('2d');
+
+    const canvases = canvasIds.map(id => {
+      const canvas = document.getElementById(id);
+      return {
+        canvas,
+        context: canvas.getContext('2d'),
+        history: [],
+        historyIndex: -1,
+      };
+    });
+
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let isEraserMode = false;
+    let penSize = 5; // Default pen size
+    let drawingColor = '#000000'; // Default drawing color
+    let isSymbolMode = false;
+    let selectedSymbol = 'line';
+
+    drawingCanvas.addEventListener('mousedown', startDrawing);
+    drawingCanvas.addEventListener('mouseup', stopDrawing);
+    drawingCanvas.addEventListener('mousemove', draw);
+    drawingCanvas.addEventListener('mouseleave', stopDrawing);
+
+    function startDrawing(e) {
+      isDrawing = true;
+      startX = e.clientX - drawingCanvas.getBoundingClientRect().left;
+      startY = e.clientY - drawingCanvas.getBoundingClientRect().top;
+      draw(e); // To start drawing immediately at the mouse position
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+      saveToHistory();
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+
+      const x = e.clientX - drawingCanvas.getBoundingClientRect().left;
+      const y = e.clientY - drawingCanvas.getBoundingClientRect().top;
+
+      if (isEraserMode) {
+        drawingContext.clearRect(x - penSize / 2, y - penSize / 2, penSize, penSize);
+      } else {
+        drawingContext.beginPath();
+        if (isSymbolMode) {
+          drawSymbol(startX, startY, x, y, selectedSymbol);
+        } else {
+          drawingContext.moveTo(startX, startY);
+          drawingContext.lineTo(x, y);
+        }
+        drawingContext.lineWidth = penSize;
+        drawingContext.lineCap = 'round';
+        drawingContext.lineJoin = 'round';
+        drawingContext.strokeStyle = drawingColor; // Set drawing color
+        drawingContext.stroke();
+
+        startX = x;
+        startY = y;
+      }
+    }
+
+    function drawSymbol(x1, y1, x2, y2, symbol) {
+      switch (symbol) {
+        case 'line':
+          drawingContext.moveTo(x1, y1);
+          drawingContext.lineTo(x2, y2);
+          break;
+        case 'bracket':
+          drawBracket(x1, y1, x2, y2);
+          break;
+        case 'circle':
+          drawCircle(x1, y1, x2, y2);
+          break;
+        case 'square':
+          drawSquare(x1, y1, x2, y2);
+          break;
+        // Add more cases for other symbols
+      }
+    }
+
+    function drawBracket(x1, y1, x2, y2) {
+      const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const offset = penSize / 2;
+
+      const x3 = x1 + distance * Math.cos(angle - Math.PI / 4);
+      const y3 = y1 + distance * Math.sin(angle - Math.PI / 4);
+      const x4 = x1 + distance * Math.cos(angle + Math.PI / 4);
+      const y4 = y1 + distance * Math.sin(angle + Math.PI / 4);
+
+      drawingContext.moveTo(x1 - offset, y1 - offset);
+      drawingContext.lineTo(x3 - offset, y3 - offset);
+      drawingContext.moveTo(x1 + offset, y1 + offset);
+      drawingContext.lineTo(x4 + offset, y4 + offset);
+    }
+
+    function drawCircle(x1, y1, x2, y2) {
+      const radius = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / 2;
+      drawingContext.arc(x1, y1, radius, 0, 2 * Math.PI);
+    }
+
+    function drawSquare(x1, y1, x2, y2) {
+      const side = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1));
+      const xCenter = x1 < x2 ? x1 + side / 2 : x1 - side / 2;
+      const yCenter = y1 < y2 ? y1 + side / 2 : y1 - side / 2;
+
+      drawingContext.rect(xCenter - side / 2, yCenter - side / 2, side, side);
+    }
+
+    function saveToHistory() {
+      const currentCanvas = canvases[currentCanvasIndex];
+      const imageData = drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+      currentCanvas.history.push(imageData);
+      currentCanvas.historyIndex = currentCanvas.history.length - 1;
+    }
+
+    function undo() {
+      const currentCanvas = canvases[currentCanvasIndex];
+      if (currentCanvas.historyIndex > 0) {
+        currentCanvas.historyIndex--;
+        const imageData = currentCanvas.history[currentCanvas.historyIndex];
+        drawingContext.putImageData(imageData, 0, 0);
+      }
+    }
+
+    function redo() {
+      const currentCanvas = canvases[currentCanvasIndex];
+      if (currentCanvas.historyIndex < currentCanvas.history.length - 1) {
+        currentCanvas.historyIndex++;
+        const imageData = currentCanvas.history[currentCanvas.historyIndex];
+        drawingContext.putImageData(imageData, 0, 0);
+      }
+    }
+
+   function saveDrawing() {
+      const currentCanvas = canvases[currentCanvasIndex];
+      currentCanvas.context.clearRect(0, 0, currentCanvas.canvas.width, currentCanvas.canvas.height);
+      currentCanvas.context.drawImage(drawingCanvas, 0, 0);
+      saveToHistory();
+    }
+ 
+    const layerCanvas = document.getElementById('layerCanvas');
+    const layerContext = layerCanvas.getContext('2d');
+
+    layerCanvas.addEventListener('mousedown', startDrawingOnLayer);
+    layerCanvas.addEventListener('mouseup', stopDrawingOnLayer);
+    layerCanvas.addEventListener('mousemove', drawOnLayer);
+    layerCanvas.addEventListener('mouseleave', stopDrawingOnLayer);
+
+    function startDrawingOnLayer(e) {
+      isDrawing = true;
+      startX = e.clientX - layerCanvas.getBoundingClientRect().left;
+      startY = e.clientY - layerCanvas.getBoundingClientRect().top;
+      drawOnLayer(e);
+    }
+
+    function stopDrawingOnLayer() {
+      isDrawing = false;
+      saveToHistory();
+    }
+
+    function drawOnLayer(e) {
+      if (!isDrawing) return;
+
+      const x = e.clientX - layerCanvas.getBoundingClientRect().left;
+      const y = e.clientY - layerCanvas.getBoundingClientRect().top;
+
+      layerContext.beginPath();
+      layerContext.moveTo(startX, startY);
+      layerContext.lineTo(x, y);
+      layerContext.lineWidth = penSize;
+      layerContext.lineCap = 'round';
+      layerContext.lineJoin = 'round';
+      layerContext.strokeStyle = drawingColor;
+      layerContext.stroke();
+
+      startX = x;
+      startY = y;
+    }
+
+    function switchView(view) {
+      saveDrawing();
+      drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+      const viewIndex = canvasIds.indexOf(view + 'Canvas');
+      currentCanvasIndex = viewIndex;
+      const currentCanvas = canvases[currentCanvasIndex];
+
+      drawingContext.drawImage(currentCanvas.canvas, 0, 0);
+
+      // Show the layer window with lower opacity
+      const layerWindow = document.getElementById('layerWindow');
+      const oppositeCanvasIndex = currentCanvasIndex === 0 ? 1 : 0;
+      const oppositeCanvas = canvases[oppositeCanvasIndex];
+
+      layerContext.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+      layerContext.drawImage(oppositeCanvas.canvas, 0, 0);
+      layerWindow.style.display = 'block';
+    }
+
+    function removeLayer() {
+      saveDrawing();
+      // Hide the layer window
+      const layerWindow = document.getElementById('layerWindow');
+      layerWindow.style.display = 'none';
+    }
+
+    function saveDrawing() {
+      const currentCanvas = canvases[currentCanvasIndex];
+      currentCanvas.context.clearRect(0, 0, currentCanvas.canvas.width, currentCanvas.canvas.height);
+
+      // Draw the content of both the drawing canvas and the layer canvas
+      currentCanvas.context.drawImage(drawingCanvas, 0, 0);
+      currentCanvas.context.drawImage(layerCanvas, 0, 0);
+
+      saveToHistory();
+    }
+  
+    function toggleEraser() {
+      isEraserMode = !isEraserMode;
+    }
+
+    function toggleSymbol() {
+      isSymbolMode = !isSymbolMode;
+    }
+
+    function changeSymbol() {
+      selectedSymbol = document.getElementById('symbolSelect').value;
+    }
+
+    function updatePenSize() {
+      penSize = document.getElementById('penSize').value;
+      document.getElementById('penSizeDisplay').textContent = 'Pen Size: ' + penSize;
+    }
+
+    function updateDrawingColor() {
+      drawingColor = document.getElementById('colorPicker').value;
+    }
+
+    function downloadDrawing() {
+      const dataURL = drawingCanvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = 'drawing.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function saveToLocalStorage(title) {
+      const currentCanvas = canvases[currentCanvasIndex];
+      const dataURL = currentCanvas.canvas.toDataURL();
+      localStorage.setItem(title, dataURL);
+
+      // Update the saved drawings list
+      updateSavedDrawingsList();
+    }
+
+    function deleteFromLocalStorage(title) {
+      const confirmDelete = confirm(`Are you sure you want to delete the drawing titled "${title}"?`);
+      if (confirmDelete) {
+        localStorage.removeItem(title);
+
+        // Update the saved drawings list
+        updateSavedDrawingsList();
+      }
+    }
+
+    function loadFromLocalStorage(title) {
+      const dataURL = localStorage.getItem(title);
+      const img = new Image();
+      img.src = dataURL;
+      img.onload = () => {
+        drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        drawingContext.drawImage(img, 0, 0);
+      };
+    }
+
+    function updateSavedDrawingsList() {
+      const savedDrawingsList = document.getElementById('savedDrawingsList');
+      savedDrawingsList.innerHTML = '';
+
+      Object.keys(localStorage).forEach(title => {
+        const listItem = document.createElement('li');
+        listItem.textContent = title;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => deleteFromLocalStorage(title));
+
+        listItem.appendChild(deleteButton);
+        listItem.addEventListener('click', () => loadFromLocalStorage(title));
+        savedDrawingsList.appendChild(listItem);
+      });
+    }
+
+    // Example buttons to save and rotate the drawing
+    const saveButton = document.createElement('button');
+    saveButton.textContent = 'Save Drawing';
+    saveButton.addEventListener('click', () => {
+      const title = prompt('Enter a title for the drawing:');
+      if (title) {
+        saveDrawing();
+        saveToLocalStorage(title);
+      }
+    });
+    document.body.appendChild(saveButton);
+
+    const rotateButton = document.createElement('button');
+    rotateButton.textContent = 'Rotate Drawing';
+    rotateButton.addEventListener('click', rotateDrawing);
+    document.body.appendChild(rotateButton);
+
+    function rotateDrawing() {
+      saveDrawing();
+      currentCanvasIndex = (currentCanvasIndex + 1) % canvasIds.length;
+      const currentCanvas = canvases[currentCanvasIndex];
+
+      drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      drawingContext.drawImage(currentCanvas.canvas, 0, 0);
+    }
+
+    // Initialize the saved drawings list
+    updateSavedDrawingsList();
+
+
+  </script>
+</body>
+</html>
