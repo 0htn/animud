@@ -1,1 +1,1 @@
-Animation in progress..
+Animation drawn in progress..
