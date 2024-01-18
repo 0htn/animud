@@ -69,7 +69,6 @@
     <button onclick="downloadDrawing()">Download Drawing</button>
     <input type="color" id="colorPicker" value="#000000" onchange="updateDrawingColor()">
     <input type="file" id="fileInput" onchange="handleFileUpload()">
-
   </div>
 
   <div id="rightContainer">
@@ -78,6 +77,13 @@
       <ul id="savedDrawingsList"></ul>
     </div>
   </div>
+
+<div id="moveButtons">
+  <button onclick="moveDrawing('up')">Move Up</button>
+  <button onclick="moveDrawing('down')">Move Down</button>
+  <button onclick="moveDrawing('left')">Move Left</button>
+  <button onclick="moveDrawing('right')">Move Right</button>
+</div>
 
   <canvas id="frontCanvas" width="800" height="500"></canvas>
   <canvas id="backCanvas" width="800" height="500"></canvas>
@@ -442,6 +448,33 @@
         reader.readAsDataURL(file);
       }
     }
+
+function moveDrawing(direction) {
+    const currentCanvas = canvases[currentCanvasIndex];
+    const imageData = drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+    switch (direction) {
+        case 'up':
+            drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            drawingContext.putImageData(imageData, 0, -10);
+            break;
+        case 'down':
+            drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            drawingContext.putImageData(imageData, 0, 10);
+            break;
+        case 'left':
+            drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            drawingContext.putImageData(imageData, -10, 0);
+            break;
+        case 'right':
+            drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            drawingContext.putImageData(imageData, 10, 0);
+            break;
+        default:
+            break;
+    }
+}
+
   </script>
 </body>
 </html>
