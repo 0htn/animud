@@ -66,9 +66,12 @@
     <!-- Removed buttons for side views -->
     <button onclick="undo()">Undo</button>
     <button onclick="redo()">Redo</button>
+    <button onclick="toggleEraser()">Toggle Eraser</button>
     <button onclick="downloadDrawing()">Download Drawing</button>
     <input type="color" id="colorPicker" value="#000000" onchange="updateDrawingColor()">
-    <input type="file" id="fileInput" onchange="handleFileUpload()"><label>Move the Drawing in Layer: </label>
+    <input type="file" id="fileInput" onchange="handleFileUpload()">
+    <br>
+    <label>Move the Drawing in Layer: </label>
     <button onclick="moveLayerContent('up')">Move Up</button>
     <button onclick="moveLayerContent('down')">Move Down</button>
     <button onclick="moveLayerContent('left')">Move Left</button>
@@ -492,6 +495,14 @@ function moveLayerContent(direction) {
         default:
             break;
     }
+}
+
+function toggleEraser() {
+    isEraserMode = !isEraserMode;
+
+    // Update button text to reflect current mode
+    const eraserButton = document.querySelector('button[onclick="toggleEraser()"]');
+    eraserButton.textContent = isEraserMode ? 'Toggle Drawing' : 'Toggle Eraser';
 }
 
   </script>
