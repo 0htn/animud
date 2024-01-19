@@ -69,6 +69,13 @@
     <button onclick="downloadDrawing()">Download Drawing</button>
     <input type="color" id="colorPicker" value="#000000" onchange="updateDrawingColor()">
     <input type="file" id="fileInput" onchange="handleFileUpload()">
+
+    <label>Move Layer: </label>
+    <button onclick="moveLayerContent('up')">Move Up</button>
+    <button onclick="moveLayerContent('down')">Move Down</button>
+    <button onclick="moveLayerContent('left')">Move Left</button>
+    <button onclick="moveLayerContent('right')">Move Right</button>
+
   </div>
 
   <div id="rightContainer">
@@ -469,6 +476,34 @@ function moveDrawing(direction) {
         case 'right':
             drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
             drawingContext.putImageData(imageData, 10, 0);
+            break;
+        default:
+            break;
+    }
+}
+
+//___
+function moveLayerContent(direction) {
+    const layerCanvas = document.getElementById('layerCanvas');
+    const layerContext = layerCanvas.getContext('2d');
+    const imageData = layerContext.getImageData(0, 0, layerCanvas.width, layerCanvas.height);
+
+    switch (direction) {
+        case 'up':
+            layerContext.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+            layerContext.putImageData(imageData, 0, -10);
+            break;
+        case 'down':
+            layerContext.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+            layerContext.putImageData(imageData, 0, 10);
+            break;
+        case 'left':
+            layerContext.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+            layerContext.putImageData(imageData, -10, 0);
+            break;
+        case 'right':
+            layerContext.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+            layerContext.putImageData(imageData, 10, 0);
             break;
         default:
             break;
