@@ -421,20 +421,6 @@
     });
     document.body.appendChild(saveButton);
 
-    const rotateButton = document.createElement('button');
-    rotateButton.textContent = 'Rotate Drawing';
-    rotateButton.addEventListener('click', rotateDrawing);
-    document.body.appendChild(rotateButton);
-
-    function rotateDrawing() {
-      saveDrawing();
-      currentCanvasIndex = (currentCanvasIndex + 1) % canvasIds.length;
-      const currentCanvas = canvases[currentCanvasIndex];
-
-      drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-      drawingContext.drawImage(currentCanvas.canvas, 0, 0);
-    }
-
     // Initialize the saved drawings list
     updateSavedDrawingsList();
 
