@@ -61,9 +61,8 @@
   </div>
 
   <div>
-    <button onclick="switchView('front')">Front View</button>
-    <button onclick="switchView('back')">Back View</button>
-    <!-- Removed buttons for side views -->
+    <button onclick="switchView('front')">View 1</button>
+    <button onclick="switchView('back')">View 2</button>
     <button onclick="undo()">Undo</button>
     <button onclick="redo()">Redo</button>
     <button onclick="toggleEraser()">Toggle Eraser</button>
@@ -95,13 +94,11 @@
 
   <canvas id="frontCanvas" width="800" height="500"></canvas>
   <canvas id="backCanvas" width="800" height="500"></canvas>
-  <canvas id="sideCanvas" width="800" height="500"></canvas>
-  <canvas id="side2Canvas" width="800" height="500"></canvas>
 
   <canvas id="drawingCanvas" width="800" height="500"></canvas>
 
   <script>
-    const canvasIds = ['frontCanvas', 'backCanvas', 'sideCanvas', 'side2Canvas'];
+    const canvasIds = ['frontCanvas', 'backCanvas'];
     let currentCanvasIndex = 0;
 
     const drawingCanvas = document.getElementById('drawingCanvas');
